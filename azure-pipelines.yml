@@ -1,4 +1,3 @@
-
 trigger:
 - master
 
@@ -6,15 +5,17 @@ resources:
 - repo: self
 
 variables:
-  # Container registry service connection established during pipeline creation
   dockerRegistryServiceConnection: 'react'
   imageRepository: 'reactfrontedcode'
   containerRegistry: 'reactfrontedcode.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
-
-  # Agent VM image name
+  
+  # VM details
   vmImageName: 'ubuntu-latest'
+  vmIpAddress: '20.197.41.8'
+  vmUser: 'siddhant'
+  vmPassword: '$(vmPrivatePassword)' 
 
 stages:
 - stage: Build
@@ -34,3 +35,37 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
+
+- stage: Deploy
+  displayName: Deploy stage
+  dependsOn: Build
+  jobs:
+  - job: Deploy
+    displayName: Deploy to VM
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - script: |
+        echo "Fetching image from container registry..."
+        docker pull $(containerRegistry)/$(imageRepository):$(tag)
+      displayName: 'Pull Docker image'
+
+    - script: |
+        echo "Saving Docker image to a tar file..."
+        docker save $(containerRegistry)/$(imageRepository):$(tag) -o image.tar
+      displayName: 'Save Docker image'
+
+    - script: |
+        echo "Copying Docker image to VM..."
+        scp -i $(vmPrivateKey) image.tar $(vmUser)@$(vmIpAddress):/tmp/
+      displayName: 'Transfer Docker image to VM'
+
+    - script: |
+        echo "Loading Docker image on VM..."
+        ssh -i $(vmPrivateKey) $(vmUser)@$(vmIpAddress) 'docker load -i /tmp/image.tar'
+      displayName: 'Load Docker image on VM'
+
+    - script: |
+        echo "Running Docker container on VM..."
+        ssh -i $(vmPrivateKey) $(vmUser)@$(vmIpAddress) 'docker run -d --rm --name my_container $(containerRegistry)/$(imageRepository):$(tag)'
+      displayName: 'Run Docker container on VM'
