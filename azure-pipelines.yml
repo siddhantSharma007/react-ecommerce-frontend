@@ -8,7 +8,7 @@ resources:
 variables:
   # Container registry service connection established during pipeline creation
   dockerRegistryServiceConnection: 'a51ff63b-af15-4b07-9ec4-a9c1b6888e1d'
-  imageRepository: 'siddhantsharmareactfrontedcode'
+  imageRepository: 'reactfrontedcode'
   containerRegistry: 'reactfrontedcode.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
