@@ -33,7 +33,7 @@ stages:
           docker rm $(imageRepository) || true
           
           # Run the new container
-          docker run -d \
+          docker run -d -p 3000:3000\
             --name $(imageRepository) \
             --restart unless-stopped \
             $(acrName).azurecr.io/$(imageRepository):$(tag)
