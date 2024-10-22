@@ -7,7 +7,6 @@ variables:
   tag: 'latest'
   vmImageName: 'ubuntu-latest'
 
-
 stages:
 - stage: Deploy
   displayName: 'Deploy to VM'
@@ -17,15 +16,37 @@ stages:
     pool:
       vmImage: $(vmImageName)
     steps:
+    # Get Docker Registry Credentials
+    - task: Docker@2
+      displayName: 'Docker Login'
+      inputs:
+        command: login
+        containerRegistry: $(dockerRegistryServiceConnection)
+
+    # Extract registry credentials
+    - task: Bash@3
+      displayName: 'Get Docker Credentials'
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Read Docker config and extract credentials
+          DOCKER_AUTH=$(cat ~/.docker/config.json | grep -A 1 "reactfrontedcode.azurecr.io" | grep "auth" | cut -d'"' -f4)
+          echo "##vso[task.setvariable variable=DOCKER_AUTH;]$DOCKER_AUTH"
+
     - task: SSH@0
       displayName: 'Deploy Container'
       inputs:
-        sshEndpoint: '
-vm-connection'  # Service connection using password
+        sshEndpoint: 'vm-connection'
         runOptions: 'inline'
         inline: |
-          # Login to ACR using service connection named 'react'
-          docker login reactfrontedcode.azurecr.io -u reactfrontedcode -p $(acrPassword)
+          # Decode and use the Docker credentials
+          echo $DOCKER_AUTH | base64 -d > docker_creds
+          USERNAME=$(cat docker_creds | cut -d: -f1)
+          PASSWORD=$(cat docker_creds | cut -d: -f2)
+          rm docker_creds
+
+          # Login to ACR
+          echo "$PASSWORD" | docker login reactfrontedcode.azurecr.io -u "$USERNAME" --password-stdin
           
           # Stop and remove existing container if exists
           docker stop reactfrontedcode || true
@@ -47,8 +68,7 @@ vm-connection'  # Service connection using password
     - task: SSH@0
       displayName: 'Verify Deployment'
       inputs:
-        sshEndpoint: '
-vm-connection'
+        sshEndpoint: 'vm-connection'
         runOptions: 'inline'
         inline: |
           # Check if container is running
