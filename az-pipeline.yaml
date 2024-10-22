@@ -30,7 +30,7 @@ stages:
         targetType: 'inline'
         script: |
           # Read Docker config and extract credentials
-          DOCKER_AUTH=$(cat ~/.docker/config.json | grep -A 1 "reactfrontedcode.azurecr.io" | grep "auth" | cut -d'"' -f4)
+          DOCKER_AUTH=$(cat ~/.docker/config.json | grep -A 1 "$(containerRegistry)" | grep "auth" | cut -d'"' -f4)
           echo "##vso[task.setvariable variable=DOCKER_AUTH;]$DOCKER_AUTH"
 
     - task: SSH@0
@@ -41,26 +41,26 @@ stages:
         inline: |
           # Decode and use the Docker credentials
           echo $DOCKER_AUTH | base64 -d > docker_creds
-          USERNAME=$(cat docker_creds | cut -d: -f1)
-          PASSWORD=$(cat docker_creds | cut -d: -f2)
+          USERNAME=$(cut -d: -f1 docker_creds)
+          PASSWORD=$(cut -d: -f2 docker_creds)
           rm docker_creds
 
           # Login to ACR
-          echo "$PASSWORD" | docker login reactfrontedcode.azurecr.io -u "$USERNAME" --password-stdin
+          echo "$PASSWORD" | docker login $(containerRegistry) -u "$USERNAME" --password-stdin
           
-          # Stop and remove existing container if exists
-          docker stop reactfrontedcode || true
-          docker rm reactfrontedcode || true
+          # Stop and remove existing container if it exists
+          docker stop $(imageRepository) || true
+          docker rm $(imageRepository) || true
           
           # Pull latest image
-          docker pull reactfrontedcode.azurecr.io/reactfrontedcode:$(tag)
+          docker pull $(containerRegistry)/$(imageRepository):$(tag)
           
           # Run new container
           docker run -d \
-            --name reactfrontedcode \
+            --name $(imageRepository) \
             --restart unless-stopped \
             -p 80:3000 \
-            reactfrontedcode.azurecr.io/reactfrontedcode:$(tag)
+            $(containerRegistry)/$(imageRepository):$(tag)
           
           # Cleanup old images
           docker image prune -f
@@ -71,8 +71,8 @@ stages:
         sshEndpoint: 'vm-connection'
         runOptions: 'inline'
         inline: |
-          # Check if container is running
-          if docker ps | grep reactfrontedcode; then
+          # Check if the container is running
+          if docker ps | grep -q $(imageRepository); then
             echo "Container deployed successfully!"
           else
             echo "Container deployment failed!"
