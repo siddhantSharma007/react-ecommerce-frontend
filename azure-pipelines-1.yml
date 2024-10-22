@@ -1,0 +1,61 @@
+trigger: none
+
+variables:
+  dockerRegistryServiceConnection: 'react'
+  imageRepository: 'reactfrontedcode'
+  containerRegistry: 'reactfrontedcode.azurecr.io'
+  tag: 'latest'
+  vmImageName: 'ubuntu-latest'
+
+  vmIpAddress: '20.197.41.8'
+  vmUser: 'siddhant'
+  vmPassword: 'sep@2024$#@!'
+
+stages:
+- stage: Deploy
+  displayName: 'Deploy to VM'
+  jobs:
+  - job: DeployContainer
+    displayName: 'Deploy to Azure VM'
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: SSH@0
+      displayName: 'Deploy Container'
+      inputs:
+        sshEndpoint: 'vm-connection'  # Service connection using password
+        runOptions: 'inline'
+        inline: |
+          # Login to ACR using service connection named 'react'
+          docker login reactfrontedcode.azurecr.io -u reactfrontedcode -p $(acrPassword)
+          
+          # Stop and remove existing container if exists
+          docker stop reactfrontedcode || true
+          docker rm reactfrontedcode || true
+          
+          # Pull latest image
+          docker pull reactfrontedcode.azurecr.io/reactfrontedcode:$(tag)
+          
+          # Run new container
+          docker run -d \
+            --name reactfrontedcode \
+            --restart unless-stopped \
+            -p 80:3000 \
+            reactfrontedcode.azurecr.io/reactfrontedcode:$(tag)
+          
+          # Cleanup old images
+          docker image prune -f
+          
+    - task: SSH@0
+      displayName: 'Verify Deployment'
+      inputs:
+        sshEndpoint: 'vm-connection'
+        runOptions: 'inline'
+        inline: |
+          # Check if container is running
+          if docker ps | grep reactfrontedcode; then
+            echo "Container deployed successfully!"
+          else
+            echo "Container deployment failed!"
+            exit 1
+          fi
