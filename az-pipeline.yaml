@@ -1,91 +1,39 @@
-trigger: none
+trigger:
+  - main
 
 variables:
-  dockerRegistryServiceConnection: 'react'
-  imageRepository: 'reactfrontedcode'
+  acrName: 'reactfrontedcode'
   containerRegistry: 'reactfrontedcode.azurecr.io'
-  tag: '59'  # Changed from 'latest' to '59'
-  vmImageName: 'ubuntu-latest'
+  imageRepository: 'reactfrontedcode'
+  tag: '59'
+  vmConnectionName: 'vm-connection'
 
 stages:
 - stage: Deploy
-  displayName: 'Deploy to VM'
+  displayName: Deploy to VM
   jobs:
-  - job: DeployContainer
-    displayName: 'Deploy to Azure VM'
+  - job: Deploy
+    displayName: Deploy to VM
     pool:
-      vmImage: $(vmImageName)
+      vmImage: 'ubuntu-latest'
     steps:
-    # Get Docker Registry Credentials
-    - task: Docker@2
-      displayName: 'Docker Login'
-      inputs:
-        command: login
-        containerRegistry: $(dockerRegistryServiceConnection)
-
-    # Extract registry credentials
-    - task: Bash@3
-      displayName: 'Get Docker Credentials'
-      inputs:
-        targetType: 'inline'
-        script: |
-          # Read Docker config and extract credentials
-          DOCKER_AUTH=$(cat ~/.docker/config.json | grep -A 1 "$(containerRegistry)" | grep "auth" | cut -d'"' -f4)
-          echo "##vso[task.setvariable variable=DOCKER_AUTH;]$DOCKER_AUTH"
-
     - task: SSH@0
-      displayName: 'Deploy Container'
       inputs:
-        sshEndpoint: 'vm-connection'
+        sshEndpoint: '$(vmConnectionName)'
         runOptions: 'inline'
         inline: |
-          # Decode and use the Docker credentials
-          echo $DOCKER_AUTH | base64 -d > docker_creds
-          USERNAME=$(cut -d: -f1 docker_creds)
-          PASSWORD=$(cut -d: -f2 docker_creds)
-          rm docker_creds
-
-          # Debug outputs
-          echo "USERNAME: $USERNAME"
-          # Uncomment this in a secure environment
-          # echo "PASSWORD: $PASSWORD"
-
           # Login to ACR
-          echo "$PASSWORD" | docker login $(containerRegistry) -u "$USERNAME" --password-stdin
-          if [ $? -ne 0 ]; then
-            echo "Docker login failed!"
-            exit 1
-          fi
-
+          az acr login --name $(acrName)
+          
+          # Pull the latest image
+          docker pull $(acrName).azurecr.io/$(imageRepository):$(tag)
+          
           # Stop and remove existing container if it exists
-          if docker ps -a | grep -q $(imageRepository); then
-            docker stop $(imageRepository) || true
-            docker rm $(imageRepository) || true
-          fi
+          docker stop $(imageRepository) || true
+          docker rm $(imageRepository) || true
           
-          # Pull the specific image tag
-          docker pull $(containerRegistry)/$(imageRepository):$(tag)
-          
-          # Run new container with the specified tag
+          # Run the new container
           docker run -d \
             --name $(imageRepository) \
             --restart unless-stopped \
-            -p 80:3000 \
-            $(containerRegistry)/$(imageRepository):$(tag)
-          
-          # Cleanup old images
-          docker image prune -f
-          
-    - task: SSH@0
-      displayName: 'Verify Deployment'
-      inputs:
-        sshEndpoint: 'vm-connection'
-        runOptions: 'inline'
-        inline: |
-          # Check if the container is running
-          if docker ps | grep -q $(imageRepository); then
-            echo "Container deployed successfully!"
-          else
-            echo "Container deployment failed!"
-            exit 1
-          fi
+            $(acrName).azurecr.io/$(imageRepository):$(tag)
