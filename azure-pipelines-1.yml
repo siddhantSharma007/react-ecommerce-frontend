@@ -20,7 +20,8 @@ stages:
     - task: SSH@0
       displayName: 'Deploy Container'
       inputs:
-        sshEndpoint: 'vm-connection'  # Service connection using password
+        sshEndpoint: '
+vm-connection'  # Service connection using password
         runOptions: 'inline'
         inline: |
           # Login to ACR using service connection named 'react'
@@ -46,7 +47,8 @@ stages:
     - task: SSH@0
       displayName: 'Verify Deployment'
       inputs:
-        sshEndpoint: 'vm-connection'
+        sshEndpoint: '
+vm-connection'
         runOptions: 'inline'
         inline: |
           # Check if container is running
