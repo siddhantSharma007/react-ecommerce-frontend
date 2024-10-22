@@ -7,9 +7,6 @@ variables:
   tag: 'latest'
   vmImageName: 'ubuntu-latest'
 
-  vmIpAddress: '20.197.41.8'
-  vmUser: 'siddhant'
-  vmPassword: 'sep@2024$#@!'
 
 stages:
 - stage: Deploy
