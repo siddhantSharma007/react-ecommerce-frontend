@@ -4,7 +4,7 @@ variables:
   dockerRegistryServiceConnection: 'react'
   imageRepository: 'reactfrontedcode'
   containerRegistry: 'reactfrontedcode.azurecr.io'
-  tag: 'latest'
+  tag: '59'  # Changed from 'latest' to '59'
   vmImageName: 'ubuntu-latest'
 
 stages:
@@ -45,17 +45,28 @@ stages:
           PASSWORD=$(cut -d: -f2 docker_creds)
           rm docker_creds
 
+          # Debug outputs
+          echo "USERNAME: $USERNAME"
+          # Uncomment this in a secure environment
+          # echo "PASSWORD: $PASSWORD"
+
           # Login to ACR
           echo "$PASSWORD" | docker login $(containerRegistry) -u "$USERNAME" --password-stdin
-          
+          if [ $? -ne 0 ]; then
+            echo "Docker login failed!"
+            exit 1
+          fi
+
           # Stop and remove existing container if it exists
-          docker stop $(imageRepository) || true
-          docker rm $(imageRepository) || true
+          if docker ps -a | grep -q $(imageRepository); then
+            docker stop $(imageRepository) || true
+            docker rm $(imageRepository) || true
+          fi
           
-          # Pull latest image
+          # Pull the specific image tag
           docker pull $(containerRegistry)/$(imageRepository):$(tag)
           
-          # Run new container
+          # Run new container with the specified tag
           docker run -d \
             --name $(imageRepository) \
             --restart unless-stopped \
