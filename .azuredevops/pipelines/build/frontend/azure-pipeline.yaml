@@ -1,0 +1,46 @@
+parameters:
+  - name: environment
+    type: string
+    default: 'dev'
+    displayName: "Environment to Deploy"
+    values:
+      - dev
+      - staging
+      - prod
+
+variables:
+  artifactName: 'frontend-build' 
+
+trigger: none
+
+pool:
+  name: '$(Agent.Pool.Name)'
+
+stages:
+  - stage: Build
+    displayName: Build for ${{ parameters.environment }}
+    jobs:
+      - job: Build
+        displayName: Build
+        steps:
+          - template: /.azuredevops/templates/build/frontend/nodejsinstall/azure-template.yaml
+          - template: /.azuredevops/templates/build/frontend/build/azure-template.yaml
+          - template: /.azuredevops/templates/build/frontend/publishartifact/azure-template.yaml
+            parameters:
+              artifactName: $(artifactName) 
+
+  - stage: Deploy
+    dependsOn: Build
+    condition: succeeded()
+    displayName: Deploy to ${{ parameters.environment }}
+    jobs:
+      - deployment: Deploy
+        displayName: 'Deploy to blob storage'
+        environment: ${{ parameters.environment }}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: /.azuredevops/templates/release/frontend/downloadartifact/azure-template.yaml
+                  parameters:
+                    artifactName: $(artifactName) 
