@@ -1,16 +1,15 @@
 {
   "routes": [
     {
-      "route": "/",
-      "redirect": "/.auth/login/github?post_login_redirect_uri=/home",
-      "statusCode": 302
-    },
-    {
-      "route": "/home",
-      "allowedRoles": ["authenticated"]
+      "route": "/.auth/*",
+      "allowedRoles": ["anonymous", "authenticated"]
     },
     {
       "route": "/manifest.json",
+      "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
+      "route": "/favicon.ico",
       "allowedRoles": ["anonymous", "authenticated"]
     },
     {
@@ -22,6 +21,12 @@
       "allowedRoles": ["authenticated"]
     }
   ],
+  "responseOverrides": {
+    "401": {
+      "redirect": "/.auth/login/github?post_login_redirect_uri=/",
+      "statusCode": 302
+    }
+  },
   "navigationFallback": {
     "rewrite": "/index.html"
   }
