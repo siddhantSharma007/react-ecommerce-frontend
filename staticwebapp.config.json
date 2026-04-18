@@ -2,7 +2,7 @@
   "routes": [
     {
       "route": "/",
-      "redirect": "/.auth/login/github?post_login_redirect_uri=/home",
+      "redirect": "/.auth/login/github?post_login_redirect_uri=/",
       "statusCode": 302
     }
   ],
