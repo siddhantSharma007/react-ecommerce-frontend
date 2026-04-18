@@ -1,6 +1,23 @@
 {
   "routes": [
     {
+      "route": "/",
+      "redirect": "/.auth/login/github",
+      "statusCode": 302
+    },
+    {
+      "route": "/manifest.json",
+      "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
+      "route": "/favicon.ico",
+      "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
+      "route": "/static/*",
+      "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
       "route": "/*",
       "allowedRoles": ["authenticated"]
     }
