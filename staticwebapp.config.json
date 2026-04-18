@@ -2,15 +2,15 @@
   "routes": [
     {
       "route": "/",
-      "redirect": "/.auth/login/github",
+      "redirect": "/.auth/login/github?post_login_redirect_uri=/home",
       "statusCode": 302
     },
     {
-      "route": "/manifest.json",
-      "allowedRoles": ["anonymous", "authenticated"]
+      "route": "/home",
+      "allowedRoles": ["authenticated"]
     },
     {
-      "route": "/favicon.ico",
+      "route": "/manifest.json",
       "allowedRoles": ["anonymous", "authenticated"]
     },
     {
